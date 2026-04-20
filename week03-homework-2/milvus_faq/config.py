@@ -1,6 +1,7 @@
 import os
 from llama_index.core.settings import Settings
 from llama_index.embeddings.dashscope import DashScopeEmbedding
+from llama_index.llms.dashscope import DashScope
 from dotenv import load_dotenv
 
 
@@ -14,8 +15,8 @@ if not DASHSCOPE_API_KEY:
     raise ValueError("请设置环境变量 DASHSCOPE_API_KEY")
 
 # --- 模型和嵌入配置 ---
-# 使用通义千问的 'qwen-plus' 作为 LLM (虽然本项目主要用嵌入，但设置好以备扩展)
-# llm = DashScope(model_name="qwen-plus", api_key=DASHSCOPE_API_KEY)
+# 使用通义千问的 'qwen-plus' 作为 LLM
+llm = DashScope(model_name="qwen-plus", api_key=DASHSCOPE_API_KEY)
 
 # 使用通义千问的文本嵌入模型
 EMBED_MODEL = DashScopeEmbedding(
@@ -24,9 +25,9 @@ EMBED_MODEL = DashScopeEmbedding(
 )
 
 # --- LlamaIndex 全局设置 ---
-# 将嵌入模型配置到 LlamaIndex 的全局设置中
+# 将嵌入模型和LLM配置到 LlamaIndex 的全局设置中
 Settings.embed_model = EMBED_MODEL
-# Settings.llm = llm # 如果需要LLM进行答案合成，取消此行注释
+Settings.llm = llm
 Settings.chunk_size = 512
 Settings.chunk_overlap = 20
 
