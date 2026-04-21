@@ -3,6 +3,7 @@ from typing import Annotated, Sequence, Literal, TypedDict
 from langchain_core.messages import BaseMessage, AIMessage
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
+from .order_utils import has_order_id
 from .services import ServiceManager
 
 
@@ -11,6 +12,9 @@ class AgentState(TypedDict):
 
 
 class GraphManager:
+    ORDER_QUERY_KEYWORDS = ("查订单", "查询订单", "订单状态", "物流", "快递")
+    RELATIVE_TIME_KEYWORDS = ("昨天", "前天", "今天", "上周")
+
     def __init__(self, service_manager: ServiceManager):
         self.service_manager = service_manager
         self._app = self._build_graph()
@@ -65,20 +69,26 @@ class GraphManager:
             print(f"模型调用错误: {e}")
             return {"messages": [AIMessage(content="抱歉，系统出现错误，请稍后再试。")]}
 
-    @staticmethod
-    def _router(state: AgentState) -> Literal["agent", "ask_for_order_id"]:
+    @classmethod
+    def _router(cls, state: AgentState) -> Literal["agent", "ask_for_order_id"]:
         print("--- [Node] Router: Analyzing user intent... ---")
         last_message = state['messages'][-1]
-        # 简单的关键词匹配路由，未来可以替换为更复杂的意图识别模型
-        if "查订单" in last_message.content and "SN" not in last_message.content:
-            # 如果用户提到了相对时间，也交给agent处理
-            if any(kw in last_message.content for kw in ["昨天", "前天", "今天", "上周"]):
-                 return "agent"
+        if cls._needs_order_id(last_message.content):
             print("--- [Decision] Routing to 'ask_for_order_id'. ---")
             return "ask_for_order_id"
-        else:
-            print("--- [Decision] Routing to 'agent'. ---")
-            return "agent"
+
+        print("--- [Decision] Routing to 'agent'. ---")
+        return "agent"
+
+    @classmethod
+    def _needs_order_id(cls, message_content: str) -> bool:
+        if has_order_id(message_content):
+            return False
+
+        if any(keyword in message_content for keyword in cls.RELATIVE_TIME_KEYWORDS):
+            return False
+
+        return any(keyword in message_content for keyword in cls.ORDER_QUERY_KEYWORDS)
 
     @staticmethod
     def _ask_for_order_id(state: AgentState):

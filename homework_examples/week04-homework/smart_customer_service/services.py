@@ -1,10 +1,37 @@
 import os
 from dotenv import load_dotenv
 from langchain_community.chat_models import ChatTongyi
+from langchain_core.messages import AIMessage
 from .tools import default_tools
 
 
 load_dotenv()
+
+
+class MockCustomerServiceLLM:
+    """本地兜底模型，避免在未配置真实模型密钥时服务无法启动。"""
+
+    def __init__(self, model_name: str = "mock-customer-service"):
+        self.model_name = model_name
+        self._tools = []
+
+    def bind_tools(self, tools: list):
+        self._tools = tools
+        return self
+
+    def invoke(self, messages):
+        user_message = messages[-1].content if messages else ""
+
+        if "发票" in user_message:
+            return AIMessage(content="请提供订单号，我来为您开具发票。")
+        if "退款" in user_message:
+            return AIMessage(content="请提供订单号和退款原因，我来为您提交退款申请。")
+        if "查订单" in user_message:
+            return AIMessage(content="请提供订单号，我来帮您查询订单状态。")
+        if any(keyword in user_message for keyword in ["昨天", "前天", "今天", "上周"]):
+            return AIMessage(content="我可以帮您理解相对时间，请补充您的订单相关问题。")
+
+        return AIMessage(content="您好，我可以帮您查询订单、申请退款或开具发票。")
 
 
 class ServiceManager:
@@ -19,10 +46,15 @@ class ServiceManager:
         self.print_services()
 
     def _create_llm(self):
+        return self._create_llm_by_name("qwen-plus")
+
+    def _create_llm_by_name(self, model_name: str):
         if not os.environ.get("DASHSCOPE_API_KEY"):
-            print("⚠️ 警告: DASHSCOPE_API_KEY 环境变量未设置！")
+            print("⚠️ 警告: DASHSCOPE_API_KEY 环境变量未设置，已切换到本地 Mock LLM。")
+            return MockCustomerServiceLLM(model_name=f"mock-{model_name}")
+
         return ChatTongyi(
-            model_name="qwen-plus",
+            model_name=model_name,
             temperature=0,
             streaming=True
         )
@@ -35,7 +67,7 @@ class ServiceManager:
 
     def update_llm(self, model_name: str):
         print(f"🔄 [热更新] 正在更新LLM模型为: {model_name}")
-        self._llm = ChatTongyi(model_name=model_name, temperature=0, streaming=True)
+        self._llm = self._create_llm_by_name(model_name)
         self.print_services()
 
     def update_tools(self, new_tools: list):

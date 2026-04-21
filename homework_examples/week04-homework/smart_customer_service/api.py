@@ -1,6 +1,6 @@
-import uuid
+from typing import Literal
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from .services import service_manager
 from .graph import GraphManager
 from langchain_core.messages import HumanMessage, AIMessage
@@ -20,13 +20,13 @@ graph_manager = GraphManager(service_manager)
 
 
 class ChatRequest(BaseModel):
-    user_id: str # 用于追踪会话
-    query: str
+    user_id: str = Field(min_length=1)  # 用于追踪会话
+    query: str = Field(min_length=1)
 
 
 class HotUpdateRequest(BaseModel):
-    type: str # "model" or "tools"
-    name: str # e.g., "qwen-max" or "default"
+    type: Literal["model", "tools"]
+    name: str = Field(min_length=1)  # e.g., "qwen-max" or "default"
 
 
 @app.get("/health", summary="健康检查")
@@ -67,26 +67,19 @@ async def hot_update(request: HotUpdateRequest):
     - type: 'model', name: 'qwen-max'
     - type: 'tools', name: 'query_only' (示例)
     """
-    try:
-        if request.type == "model":
-            service_manager.update_llm(request.name)
-        elif request.type == "tools":
-            # 这里可以根据 name 加载不同的工具集
-            if request.name == "query_only":
-                from .tools.order_tools import query_order
-                service_manager.update_tools([query_order])
-            else: # 恢复默认
-                from .tools import default_tools
-                service_manager.update_tools(default_tools)
-        else:
-            raise HTTPException(status_code=400, detail="无效的更新类型")
+    if request.type == "model":
+        service_manager.update_llm(request.name)
+    elif request.name == "query_only":
+        from .tools.order_tools import query_order
+        service_manager.update_tools([query_order])
+    elif request.name == "default":
+        from .tools import default_tools
+        service_manager.update_tools(default_tools)
+    else:
+        raise HTTPException(status_code=400, detail="不支持的工具集名称")
 
-        # 更新后，重新加载图
-        graph_manager.reload_graph()
-        
-        return {"status": "success", "message": f"{request.type} 热更新完成."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"热更新失败: {e}")
+    graph_manager.reload_graph()
+    return {"status": "success", "message": f"{request.type} 热更新完成."}
 
 
 # 如果你想通过 python -m smart_customer_service.api 运行

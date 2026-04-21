@@ -1,10 +1,14 @@
 import unittest
-from unittest.mock import patch
+from fastapi.testclient import TestClient
+from langchain_core.messages import HumanMessage
 from smart_customer_service.tools.order_tools import generate_invoice
+from smart_customer_service.api import app
+from smart_customer_service.graph import GraphManager
 from smart_customer_service.services import ServiceManager
 
 
 class TestFeatures(unittest.TestCase):
+    client = TestClient(app)
 
     def test_invoice_tool(self):
         """测试发票开具工具功能"""
@@ -15,6 +19,19 @@ class TestFeatures(unittest.TestCase):
         self.assertIn("invoice_url", result)
         self.assertIn(order_id, result["invoice_url"])
         print(f"\n✅ 测试发票工具成功: {result['message']}")
+
+    def test_invoice_tool_rejects_invalid_order_id(self):
+        """测试发票工具对非法订单号进行拦截"""
+        result = generate_invoice.invoke({"order_id": "invalid-sn"})
+
+        self.assertFalse(result["success"])
+        self.assertIn("格式无效", result["error"])
+
+    def test_router_prompts_for_order_id_on_logistics_query(self):
+        """测试查询物流但缺少订单号时会触发追问"""
+        state = {"messages": [HumanMessage(content="帮我查一下物流进度")]}
+        route = GraphManager._router(state)
+        self.assertEqual(route, "ask_for_order_id")
 
     def test_hot_update_preserves_sessions(self):
         """
@@ -42,6 +59,12 @@ class TestFeatures(unittest.TestCase):
         # 这种设计避免了直接修改正在运行的图对象，从而实现了平滑过渡。
         print("✅ 概念验证: 热更新通过创建新图实例来隔离会话，新会话将使用更新后的工具。")
         self.assertTrue(True)
+
+    def test_hot_update_rejects_unknown_toolset(self):
+        """测试未知工具集不会被静默回退为默认配置"""
+        response = self.client.post("/hot-update", json={"type": "tools", "name": "unknown_tools"})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("不支持的工具集名称", response.json()["detail"])
 
 
 if __name__ == '__main__':
