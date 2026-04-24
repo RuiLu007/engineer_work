@@ -1,0 +1,5 @@
+neo4j_data/
+milvus_demo.db
+vector_index/
+*.swp
+test_results.json
