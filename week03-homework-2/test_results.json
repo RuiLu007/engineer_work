@@ -1,0 +1,52 @@
+{
+  "total": 6,
+  "passed": 2,
+  "failed": 4,
+  "timestamp": "2026-04-24T17:31:20.583693",
+  "tests": [
+    {
+      "name": "根路径测试",
+      "passed": true,
+      "message": "状态码: 200",
+      "timestamp": "2026-04-24T17:31:15.107823",
+      "response": {
+        "message": "欢迎使用 GraphRAG API. 请先运行 'python -m graph_rag.graph_builder' 来构建知识图谱, 然后访问 /docs 查看 API 文档."
+      }
+    },
+    {
+      "name": "FAQ查询测试: '什么是公司注册？'",
+      "passed": false,
+      "message": "状态码: 500",
+      "timestamp": "2026-04-24T17:31:17.738076",
+      "response": null
+    },
+    {
+      "name": "FAQ查询测试: '如何申请营业执照？'",
+      "passed": false,
+      "message": "状态码: 500",
+      "timestamp": "2026-04-24T17:31:19.194056",
+      "response": null
+    },
+    {
+      "name": "FAQ查询测试: '注册公司需要多长时间？'",
+      "passed": false,
+      "message": "状态码: 500",
+      "timestamp": "2026-04-24T17:31:20.578872",
+      "response": null
+    },
+    {
+      "name": "空问题测试",
+      "passed": true,
+      "message": "状态码: 400 (期望 400)",
+      "timestamp": "2026-04-24T17:31:20.581400",
+      "response": null
+    },
+    {
+      "name": "索引更新测试",
+      "passed": false,
+      "message": "状态码: 404",
+      "timestamp": "2026-04-24T17:31:20.583450",
+      "response": null
+    }
+  ]
+}

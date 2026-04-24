@@ -4,8 +4,8 @@ import time
 from datetime import datetime
 
 
-# BASE_URL = "http://localhost:8000"
-BASE_URL = "http://4.163.7.3,127:8000"
+BASE_URL = "http://localhost:8000"
+#BASE_URL = "http://4.163.7.3,127:8000"
 
 
 TEST_RESULTS = []
